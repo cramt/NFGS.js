@@ -30,7 +30,12 @@ class NFGSHandlerClass {
     }
     constructor() {
         process.stdin.on("data", (args: any[]) => {
-            let data: NFGSReceivable = JSON.parse(Buffer.from(args).toString())
+            let str = Buffer.from(args).toString()
+            if (str.trim() === "init") {
+                this.loadInitResolver!(true)
+                return
+            }
+            let data: NFGSReceivable = JSON.parse(str)
             this.eventHandler.emit(data.eventName, data.data)
         })
         process.on("unhandledRejection", (reason) => {
@@ -47,6 +52,21 @@ class NFGSHandlerClass {
                 command: "exception"
             })
             process.exit(1);
+        })
+    }
+    public isLoaded: boolean | null = null;
+    private loadInitResolver: ((value?: boolean | PromiseLike<boolean> | undefined) => void) | null = null
+    Load(timeout = 1000): Promise<boolean> {
+        return Promise.race([new Promise<boolean>((resolve, reject) => {
+            process.stdout.write("init")
+            this.loadInitResolver = resolve
+        }), new Promise<boolean>((resolve, reject) => {
+            setTimeout(() => {
+                resolve(false)
+            }, timeout)
+        })]).then(isLoaded => {
+            this.isLoaded = isLoaded;
+            return isLoaded;
         })
     }
 }
