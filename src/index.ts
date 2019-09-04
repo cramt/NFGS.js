@@ -32,7 +32,9 @@ class NFGSHandlerClass {
         process.stdin.on("data", (args: any[]) => {
             let str = Buffer.from(args).toString()
             if (str.trim() === "init") {
-                this.loadInitResolver!(true)
+                if (this.loadInitResolver !== null) {
+                    this.loadInitResolver(true)
+                }
                 return
             }
             let data: NFGSReceivable = JSON.parse(str)
