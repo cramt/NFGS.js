@@ -1,17 +1,15 @@
 import { EventEmitter } from "events";
 
-interface NFGSSendable {
-    command: "print" | "event" | "exception" | "init"
-    eventName: string,
-    data: any
-}
 interface NFGSReceivable {
     eventName: string,
     data: any
 }
+interface NFGSSendable extends NFGSReceivable {
+    command: "print" | "event" | "exception" | "init"
+}
 class NFGSHandlerClass {
     private stdoutSend(arg: NFGSSendable) {
-        process.stdout.write(JSON.stringify(arg) + ";" + "\r\n");
+        process.stdout.write(JSON.stringify(arg) + "\r\n");
     }
     sendMessage(eventName: string, data: any) {
         this.stdoutSend({
