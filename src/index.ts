@@ -31,12 +31,6 @@ class NFGSHandlerClass {
     constructor() {
         process.stdin.on("data", (args: any[]) => {
             let str = Buffer.from(args).toString()
-            if (str.trim() === "init") {
-                if (this.loadInitResolver !== null) {
-                    this.loadInitResolver(true)
-                }
-                return
-            }
             let data: NFGSReceivable = JSON.parse(str)
             this.eventHandler.emit(data.eventName, data.data)
         })
@@ -54,25 +48,6 @@ class NFGSHandlerClass {
                 command: "exception"
             })
             process.exit(1);
-        })
-    }
-    public isLoaded: boolean | null = null;
-    private loadInitResolver: ((value?: boolean | PromiseLike<boolean> | undefined) => void) | null = null
-    Load(timeout = 1000, id = ""): Promise<boolean> {
-        return Promise.race([new Promise<boolean>((resolve, reject) => {
-            this.stdoutSend({
-                command: "init",
-                eventName: "init",
-                data: id
-            })
-            this.loadInitResolver = resolve
-        }), new Promise<boolean>((resolve, reject) => {
-            setTimeout(() => {
-                resolve(false)
-            }, timeout)
-        })]).then(isLoaded => {
-            this.isLoaded = isLoaded;
-            return isLoaded;
         })
     }
 }
