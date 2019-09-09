@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 
 interface NFGSSendable {
-    command: "print" | "event" | "exception"
+    command: "print" | "event" | "exception" | "init"
     eventName: string,
     data: any
 }
@@ -11,7 +11,7 @@ interface NFGSReceivable {
 }
 class NFGSHandlerClass {
     private stdoutSend(arg: NFGSSendable) {
-        process.stdout.write(JSON.stringify(arg))
+        process.stdout.write(JSON.stringify(arg) + ";" + "\r\n");
     }
     sendMessage(eventName: string, data: any) {
         this.stdoutSend({
@@ -58,9 +58,13 @@ class NFGSHandlerClass {
     }
     public isLoaded: boolean | null = null;
     private loadInitResolver: ((value?: boolean | PromiseLike<boolean> | undefined) => void) | null = null
-    Load(timeout = 1000): Promise<boolean> {
+    Load(timeout = 1000, id = ""): Promise<boolean> {
         return Promise.race([new Promise<boolean>((resolve, reject) => {
-            process.stdout.write("init")
+            this.stdoutSend({
+                command: "init",
+                eventName: "init",
+                data: id
+            })
             this.loadInitResolver = resolve
         }), new Promise<boolean>((resolve, reject) => {
             setTimeout(() => {
