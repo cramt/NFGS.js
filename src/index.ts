@@ -5,7 +5,7 @@ interface NFGSReceivable {
     data: any
 }
 interface NFGSSendable extends NFGSReceivable {
-    command: "print" | "event" | "exception" | "init"
+    command: "print" | "event" | "exception"
 }
 class NFGSHandlerClass {
     private stdoutSend(arg: NFGSSendable) {
@@ -28,9 +28,15 @@ class NFGSHandlerClass {
     }
     constructor() {
         process.stdin.on("data", (args: any[]) => {
-            let str = Buffer.from(args).toString()
-            let data: NFGSReceivable = JSON.parse(str)
-            this.eventHandler.emit(data.eventName, data.data)
+            try {
+                Buffer.from(args).toString().split("\n").forEach(str => {
+                    let data: NFGSReceivable = JSON.parse(str)
+                    this.eventHandler.emit(data.eventName, data.data)
+                })
+            }
+            catch (e) {
+
+            }
         })
         process.on("unhandledRejection", (reason) => {
             this.stdoutSend({
