@@ -30,6 +30,9 @@ function initNode(path, options)
         self.listeners[key] = self.listeners[key] or {}
         table.insert(self.listeners[key], func)
     end
+    function returnObj:listen(key, func)
+        self:addListener(key, func)
+    end
     function returnObj:removeListener(key, func)
         table.remove(self.listeners[key], func)
     end
@@ -44,26 +47,38 @@ function initNode(path, options)
         end
         for _, v in pairs(nodeCommands) do
             local command = util.JSONToTable(v)
+            if(!command) then
+              ErrorNoHalt("Unknown command? " .. v)
+              
+              continue
+            end
             if(command.command == "event" or command.command == "exception") then
                 local listeners = self.listeners[command.eventName] or {}
                 for _, f in pairs(listeners) do
                     f(command.data)
                 end
             end
-            if(command.command == "print") then
-                print(command.data)
+            if(command.command == "print" and options.debug) then
+                if (type(command.data) == "table" and PrintTable) then
+                  PrintTable(command.data)
+                else
+                  print(command.data)
+                end
             end
             if(command.command == "exception") then
-                print(command.eventName + " happened: " + command.data)
+                if (options.debug) then
+                  print(command.eventName + " happened: " + command.data)
+                end
+                
                 if(command.eventName == "uncaughtException") then
-                    self:kill();
+                    self:kill()
                 end
             end
         end
-        return true;
+        return true
     end
     function returnObj:kill()
-        running = false;
+        running = false
         hook.Remove("Tick", returnObj.ptr)
         ___SUBPROCESS___WRAPPER___TABLE___.kill(self.ptr)
     end
