@@ -11,7 +11,7 @@ class NFGSHandlerClass {
     private stdoutSend(arg: NFGSSendable) {
         process.stdout.write(JSON.stringify(arg) + "\r\n");
     }
-    sendMessage(eventName: string, data: any) {
+    send(eventName: string, data: any) {
         this.stdoutSend({
             command: "event",
             eventName: eventName,
