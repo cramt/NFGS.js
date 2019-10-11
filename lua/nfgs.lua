@@ -17,18 +17,29 @@ function initNode(path, options)
     end
     local returnObj = {
         listeners = {},
+        exceptionListeners = {},
         ptr = ___SUBPROCESS___WRAPPER___TABLE___.instantiate("node " .. cmdArg .. path),
         running = true,
     }
-    __NFGS[returnObj.ptr] = returnObj;
+    __SUBPROCESS[returnObj.ptr] = returnObj;
     hook.Add("Tick", returnObj.ptr, function()
         if(returnObj.running) then
-            returnObj:think()
+            returnObj:think();
         end
     end)
     function returnObj:addListener(key, func)
         self.listeners[key] = self.listeners[key] or {}
         table.insert(self.listeners[key], func)
+    end
+    function returnObj:listen(key, func)
+        self:addListener(key, func)
+    end
+    function returnObj:addExceptionListerner(key, func)
+        self.exceptionListeners[key] = self.exceptionListeners[key] or {}
+        table.insert(self.exceptionListeners[key], func)
+    end
+    function returnObj:exceptionListen(key, func)
+        self:addExceptionListerner(key, func)
     end
     function returnObj:removeListener(key, func)
         table.remove(self.listeners[key], func)
@@ -44,26 +55,51 @@ function initNode(path, options)
         end
         for _, v in pairs(nodeCommands) do
             local command = util.JSONToTable(v)
-            if(command.command == "event" or command.command == "exception") then
+            if(!command) then
+              ErrorNoHalt("Unknown command? " .. v)
+              
+              continue
+            end
+            if(command.command == "exception") then
+                local listeners = self.exceptionListeners[command.eventName] or {}
+                for _, f in pairs(listeners) do
+                    f(command.data)
+                end 
+                if(command.eventName == "crash") then
+                    self.running = false;
+                    if(options.debug) then
+                        print("process "..path.." stopped running")
+                    end
+                end
+            end
+            if(command.command == "event") then
                 local listeners = self.listeners[command.eventName] or {}
                 for _, f in pairs(listeners) do
                     f(command.data)
+                end 
+
+            end
+            if(command.command == "print" and options.debug) then
+                if (type(command.data) == "table" and PrintTable) then
+                  PrintTable(command.data)
+                else
+                  print(command.data)
                 end
             end
-            if(command.command == "print") then
-                print(command.data)
-            end
             if(command.command == "exception") then
-                print(command.eventName + " happened: " + command.data)
+                if (options.debug) then
+                  print(command.eventName + " happened: " + command.data)
+                end
+                
                 if(command.eventName == "uncaughtException") then
-                    self:kill();
+                    self:kill()
                 end
             end
         end
-        return true;
+        return true
     end
     function returnObj:kill()
-        running = false;
+        running = false
         hook.Remove("Tick", returnObj.ptr)
         ___SUBPROCESS___WRAPPER___TABLE___.kill(self.ptr)
     end
