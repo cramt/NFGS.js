@@ -109,10 +109,16 @@ function initNode(path, bindingObjects, options)
                     if(v.todo == "get") then 
                         obj = obj[v.value]
                     elseif(v.todo == "set") then
-                        local split = v.value.Split("=")
+                        local split = string.Explode("=", v.value)
                         obj[split[1]] = obj[split[2]]
                     elseif(v.todo == "call") then
-                        --TODO: make this work, have no idea how ill do the arguments, ask pat
+                        local split = string.Explode("(", v.value:sub(0, a.value:len() - 1))
+                        local funcName = split[1]
+                        local args = string.Explode(",", split[2])
+                        local res = obj[funcName](unpack(args))
+                        if(res) then
+                            obj = res 
+                        end
                     end
                 end
                 ___SUBPROCESS___WRAPPER___TABLE___.send(self.ptr, util.TableToJSON({
