@@ -5,7 +5,7 @@ for i, v in pairs(__SUBPROCESS) do
     v:kill()
 end
 
-function initNode(path, options)
+function initNode(path, bindingObjects, options)
     options = options or {}
     options.commandLineArguments = options.commandLineArguments or {}
     if(options.debugPort) then
@@ -95,6 +95,32 @@ function initNode(path, options)
                     self:kill()
                 end
             end
+            if(command.command == "get/set") then
+                local data = util.JSONToTable(command.data)
+                local index = tonumber(data.index)
+                local steps = data.steps
+                local obj;
+                if(index == -1) then
+                    obj = _ENV
+                else
+                    obj = bindingObjects[index]
+                end
+                for _, v in ipairs(steps) do
+                    if(v.todo == "get") then 
+                        obj = obj[v.value]
+                    elseif(v.todo == "set") then
+                        local split = v.value.Split("=")
+                        obj[split[1]] = obj[split[2]]
+                    elseif(v.todo == "call") then
+                        --TODO: make this work, have no idea how ill do the arguments, ask pat
+                    end
+                end
+                ___SUBPROCESS___WRAPPER___TABLE___.send(self.ptr, util.TableToJSON({
+                    command = "get/set"
+                    eventName = index + "",
+                    data = obj
+                }))
+            end
         end
         return true
     end
@@ -105,6 +131,7 @@ function initNode(path, options)
     end
     function returnObj:send(key, data)
         ___SUBPROCESS___WRAPPER___TABLE___.send(self.ptr, util.TableToJSON({
+            command = "event"
             eventName = key,
             data = data
         }))

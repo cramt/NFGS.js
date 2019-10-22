@@ -98,7 +98,7 @@ class LuaGetPromise extends Promise<any> {
         this.index = index
     }
     public generate() {
-        return JSON.stringify(this.steps)
+        return JSON.stringify(this)
     }
     public static fromGlobal() {
         return new LuaGetPromise(-1)
