@@ -5,7 +5,7 @@ for i, v in pairs(__SUBPROCESS) do
     v:kill()
 end
 
-function initNode(path, bindingObjects, options)
+function initNode(path, options, bindingObjects)
     options = options or {}
     options.commandLineArguments = options.commandLineArguments or {}
     if(options.debugPort) then
@@ -54,9 +54,10 @@ function initNode(path, bindingObjects, options)
             return false;
         end
         for _, v in pairs(nodeCommands) do
+            print(v)
             local command = util.JSONToTable(v)
             if(!command) then
-              ErrorNoHalt("Unknown command? " .. v)
+              ErrorNoHalt("Unknown command? " .. v .. "\n")
               
               continue
             end
@@ -95,37 +96,58 @@ function initNode(path, bindingObjects, options)
                     self:kill()
                 end
             end
-            if(command.command == "get/set") then
-                local data = util.JSONToTable(command.data)
+            if(command.command == "get/set/call") then
+                local data = command.data
                 local index = tonumber(data.index)
-                local steps = data.steps
-                local obj;
+                local pathResult = nil
                 if(index == -1) then
-                    obj = _ENV
-                else
-                    obj = bindingObjects[index]
+                    pathResult = _G
+                else 
+                    pathResult = bindingObjects[index + 1]
                 end
-                for _, v in ipairs(steps) do
-                    if(v.todo == "get") then 
-                        obj = obj[v.value]
-                    elseif(v.todo == "set") then
-                        local split = string.Explode("=", v.value)
-                        obj[split[1]] = obj[split[2]]
-                    elseif(v.todo == "call") then
-                        local split = string.Explode("(", v.value:sub(0, a.value:len() - 1))
-                        local funcName = split[1]
-                        local args = string.Explode(",", split[2])
-                        local res = obj[funcName](unpack(args))
-                        if(res) then
-                            obj = res 
-                        end
+                local path = data.path
+                local action = data.action
+                local exception = nil
+                for i, v in ipairs(path) do
+                    if(pathResult == nil) then
+                        exception = "could not find property "..v.." on nil"
+                        break;
                     end
+                    pathResult = pathResult[v]
                 end
-                ___SUBPROCESS___WRAPPER___TABLE___.send(self.ptr, util.TableToJSON({
-                    command = "get/set"
-                    eventName = index + "",
-                    data = obj
-                }))
+            
+                if(exception == nil) then
+                    local res = nil
+                    if(action:sub(0, 3) == "get") then
+                        print("get")
+                        res = pathResult
+                    elseif(action:sub(0, 4) == "set=") then
+                        print("set")
+                        pathResult = action:sub(4, action:len())
+                    elseif(action:sub(0, 5) == "call(") then
+                        print("call")
+                        if(type(pathResult)=="function") then
+                            res = pathResult(util.JSONToTable(action:sub(5, action:len() - 1)))
+                        else
+                            res = pathResult
+                        end
+                    end 
+                    print(res)
+                    ___SUBPROCESS___WRAPPER___TABLE___.send(self.ptr, util.TableToJSON({
+                        command = "get/set/call",
+                        eventName = index.."",
+                        data = res
+                    }))
+                else
+                    print(exception)
+                    ___SUBPROCESS___WRAPPER___TABLE___.send(self.ptr, util.TableToJSON({
+                        command = "get/set/call",
+                        eventName = index.."",
+                        data = {
+                            ___exception = exception
+                        }
+                    }))
+                end
             end
         end
         return true
@@ -137,7 +159,7 @@ function initNode(path, bindingObjects, options)
     end
     function returnObj:send(key, data)
         ___SUBPROCESS___WRAPPER___TABLE___.send(self.ptr, util.TableToJSON({
-            command = "event"
+            command = "event",
             eventName = key,
             data = data
         }))
